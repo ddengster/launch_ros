@@ -25,6 +25,8 @@ from typing import Union
 from launch.some_substitutions_type import SomeSubstitutionsType
 from launch.substitution import Substitution
 
+from .descriptions.parameter import Parameter as ParameterDescription
+
 
 # Parameter value types used below
 _SingleValueType = Union[str, int, float, bool]
@@ -44,21 +46,24 @@ SomeParametersDict = Mapping[SomeParameterName, Union[SomeParameterValue, _SomeP
 
 # Paths to yaml files with parameters, or dictionaries of parameters, or pairs of
 # parameter names and values
-SomeParameters = Sequence[Union[SomeParameterFile, Mapping[SomeParameterName, SomeParameterValue]]]
+SomeParameters = Sequence[Union[SomeParameterFile, ParameterDescription, SomeParametersDict]]
 
 ParameterFile = Sequence[Substitution]
 ParameterName = Sequence[Substitution]
-ParameterValue = Union[Sequence[Substitution],
-                       Sequence[Sequence[Substitution]],
-                       _SingleValueType,
-                       _MultiValueType]
+ParameterValue = Union[
+    Sequence[Substitution],
+    Sequence[Sequence[Substitution]],
+    _SingleValueType,
+    _MultiValueType]
 
 # Normalized (flattened to avoid having a recursive type) parameter dict
 ParametersDict = Dict[ParameterName, ParameterValue]
 
 # Normalized parameters
-Parameters = Sequence[Union[ParameterFile, ParametersDict]]
+Parameters = Sequence[Union[ParameterFile, ParametersDict, ParameterDescription]]
 
 EvaluatedParameterValue = Union[_SingleValueType, _MultiValueType]
 # Evaluated parameters: filenames or dictionary after substitutions have been evaluated
-EvaluatedParameters = Sequence[Union[pathlib.Path, Dict[str, EvaluatedParameterValue]]]
+EvaluatedParameters = Sequence[
+    Union[pathlib.Path, ParameterDescription, Dict[str, EvaluatedParameterValue]]
+]

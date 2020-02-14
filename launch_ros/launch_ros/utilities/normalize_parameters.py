@@ -33,6 +33,7 @@ from launch.utilities import normalize_to_list_of_substitutions
 
 import yaml
 
+from ..descriptions.parameter import Parameter as ParameterDescription
 from ..parameters_type import ParameterFile  # noqa: F401
 from ..parameters_type import Parameters
 from ..parameters_type import ParametersDict
@@ -179,6 +180,8 @@ def normalize_parameters(parameters: SomeParameters) -> Parameters:
     for param in parameters:
         if isinstance(param, Mapping):
             normalized_params.append(normalize_parameter_dict(param))
+        else if isinstance(param, ParameterDescription):
+            normalized_params.append(ParameterDescription)
         else:
             # It's a path, normalize to a list of substitutions
             if isinstance(param, pathlib.Path):

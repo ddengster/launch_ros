@@ -140,6 +140,8 @@ def evaluate_parameters(context: LaunchContext, parameters: Parameters) -> Evalu
         if isinstance(param, tuple) and len(param) and isinstance(param[0], Substitution):
             # Evaluate a list of Substitution to a file path
             output_params.append(pathlib.Path(perform_substitutions(context, list(param))))
+        elif isinstance(param, ParameterDescription):
+            output_params.append(param)
         elif isinstance(param, Mapping):
             # It's a list of name/value pairs
             output_params.append(evaluate_parameter_dict(context, param))
