@@ -30,6 +30,7 @@ import warnings
 
 from launch.action import Action
 from launch.actions import ExecuteProcess
+from launch.description import Parameter
 from launch.frontend import Entity
 from launch.frontend import expose_action
 from launch.frontend import Parser
@@ -175,7 +176,8 @@ class Node(ExecuteProcess):
             # evaluate to paths), or dictionaries of parameters (fields can be substitutions).
             i = 0
             for param in parameters:
-                cmd += ['--params-file', LocalSubstitution(
+                option = '-p' if isinstance(param, Parameter) else '--param-file'
+                cmd += [option, LocalSubstitution(
                     "ros_specific_arguments['params'][{}]".format(i),
                     description='parameter {}'.format(i))]
                 i += 1
@@ -313,6 +315,9 @@ class Node(ExecuteProcess):
             yaml.dump(param_dict, h, default_flow_style=False)
             return param_file_path
 
+    def _get_parameter_rule(param: Parameter):
+        return f'{perfor param.name}'
+
     def _perform_substitutions(self, context: LaunchContext) -> None:
         try:
             if self.__substitutions_performed:
@@ -360,19 +365,24 @@ class Node(ExecuteProcess):
             self.__expanded_parameter_files = []
             evaluated_parameters = evaluate_parameters(context, self.__parameters)
             for params in evaluated_parameters:
+                check_is_file = False
                 if isinstance(params, dict):
-                    param_file_path = self._create_params_file_from_dict(params)
+                    param_argument = self._create_params_file_from_dict(params)
+                    check_is_file = True
                 elif isinstance(params, pathlib.Path):
-                    param_file_path = str(params)
+                    param_argument = str(params)
+                    check_is_file = True
+                elif isinstance(params, Parameter):
+
                 else:
                     raise RuntimeError('invalid normalized parameters {}'.format(repr(params)))
-                if not os.path.isfile(param_file_path):
+                if check_is_file and not os.path.isfile(param_argument):
                     self.__logger.warning(
-                        'Parameter file path is not a file: {}'.format(param_file_path),
+                        'Parameter file path is not a file: {}'.format(param_argument),
                     )
                     # Don't skip adding the file to the parameter list since space has been
                     # reserved for it in the ros_specific_arguments.
-                self.__expanded_parameter_files.append(param_file_path)
+                self.__expanded_parameter_files.append(param_argument)
         # expand remappings too
         if self.__remappings is not None:
             self.__expanded_remappings = []

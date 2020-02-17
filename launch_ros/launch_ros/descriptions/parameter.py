@@ -14,9 +14,16 @@
 
 """Module for a description of a Parameter."""
 
+import collections.abc
+
 from typing import Any
+from typing import Optional
 
 from launch import SomeSubstitutionsType
+from launch import Substitution
+from launch import LaunchContext
+from launch.utilities import normalize_to_list_of_substitutions
+from launch.utilities import perform_substitutions
 
 if typing.TYPE_CHECKING:
     from ..parameters_type import SomeParameterValue
@@ -30,11 +37,12 @@ class Parameter:
         *,
         name: SomeSubstitutionsType,
         value: SomeParameterValue,
-        value_type: Any
+        value_type: Any = None
     ) -> None:
-        self.__name = name
+        self.__name = normalize_to_list_of_substitutions(name)
         self.__value = value
         self.__value_type = value_type
+        self.__evaluated_parameter_rule: Optional[Text] = None
 
     @property
     def name(self):
@@ -47,3 +55,19 @@ class Parameter:
     @property
     def value_type(self):
         return self.__type
+
+    def evaluate(self, context: LaunchContext):
+        name = perform_substitutions(context, self.name)
+        value_is_substitution = (
+            isinstance(value, Substitution) or
+            (
+                isinstance(collections.abc.Iterable) and
+                len(value) > 0 and
+                isinstance(value[0], Substitution)
+            )
+        )
+        if value_is_substitution:
+            value = perform_substitutions(
+                context,
+                normalize_to_list_of_substitutions(value))
+            
