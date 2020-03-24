@@ -117,6 +117,7 @@ class Parameter:
         name = perform_substitutions(context, self.name)
         value = self.__value
         # TODO(ivanpauno): Maybe this logic to convert a list should be provided by type_utils too.
+
         def is_substitution(x):
             return (
                 isinstance(x, Substitution) or
@@ -127,6 +128,7 @@ class Parameter:
                     any(isinstance(item, Substitution) for item in x)
                 )
             )
+
         def convert_item(item, data_type):
             if is_substitution(item):
                 item = perform_substitutions(
