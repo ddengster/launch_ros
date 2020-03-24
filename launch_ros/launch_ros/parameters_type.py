@@ -23,22 +23,31 @@ from typing import Sequence
 from typing import Union
 
 from launch.some_substitutions_type import SomeSubstitutionsType
+from launch.some_substitutions_type import SomeSubstitutionsType_types_tuple
 from launch.substitution import Substitution
 
-from .descriptions.parameter import Parameter as ParameterDescription
+from .parameter import Parameter as ParameterDescription
 
 
 # Parameter value types used below
+_SingleValueType_types_tuple = (str, int, float, bool)
 _SingleValueType = Union[str, int, float, bool]
 _MultiValueType = Union[
     Sequence[str], Sequence[int], Sequence[float], Sequence[bool], bytes]
 
 SomeParameterFile = Union[SomeSubstitutionsType, pathlib.Path]
 SomeParameterName = Sequence[Union[Substitution, str]]
-SomeParameterValue = Union[SomeSubstitutionsType,
-                           Sequence[SomeSubstitutionsType],
-                           _SingleValueType,
-                           _MultiValueType]
+SomeParameterValue = Union[
+    SomeSubstitutionsType,
+    Sequence[SomeSubstitutionsType],
+    _SingleValueType,
+    _MultiValueType
+]
+SomeParameterValue_types_tuple = (
+    SomeSubstitutionsType_types_tuple +
+    _SingleValueType_types_tuple +
+    (bytes,)
+)
 
 # TODO(sloretz) Recursive type when mypy supports them python/mypy#731
 _SomeParametersDict = Mapping[SomeParameterName, Any]

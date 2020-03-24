@@ -134,13 +134,16 @@ def evaluate_parameters(context: LaunchContext, parameters: Parameters) -> Evalu
     :param parameters: normalized parameters
     :returns: values after evaluating lists of substitutions
     """
+    # Here to avoid cyclic import
+    from ..descriptions import Parameter
+
     output_params = []  # type: List[Union[pathlib.Path, Dict[str, EvaluatedParameterValue]]]
     for param in parameters:
         # If it's a list of substitutions then evaluate them to a string and return a pathlib.Path
         if isinstance(param, tuple) and len(param) and isinstance(param[0], Substitution):
             # Evaluate a list of Substitution to a file path
             output_params.append(pathlib.Path(perform_substitutions(context, list(param))))
-        elif isinstance(param, ParameterDescription):
+        elif isinstance(param, Parameter):
             output_params.append(param)
         elif isinstance(param, Mapping):
             # It's a list of name/value pairs

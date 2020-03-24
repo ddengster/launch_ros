@@ -24,13 +24,13 @@ from typing import List
 from typing import Optional
 from typing import Text  # noqa: F401
 from typing import Tuple  # noqa: F401
+from typing import TYPE_CHECKING
 from typing import Union
 
 import warnings
 
 from launch.action import Action
 from launch.actions import ExecuteProcess
-from launch.description import Parameter
 from launch.frontend import Entity
 from launch.frontend import expose_action
 from launch.frontend import Parser
@@ -56,6 +56,9 @@ from rclpy.validate_namespace import validate_namespace
 from rclpy.validate_node_name import validate_node_name
 
 import yaml
+
+if TYPE_CHECKING:
+    from ..descriptions import Parameter
 
 
 @expose_action('node')
@@ -142,6 +145,9 @@ class Node(ExecuteProcess):
             passed to the node as ROS remapping rules
         :param: arguments list of extra arguments for the node
         """
+        # Here to avoid cyclic import
+        from ..descriptions import Parameter
+
         if package is not None:
             cmd = [ExecutableInPackage(package=package, executable=node_executable)]
         else:
@@ -176,7 +182,7 @@ class Node(ExecuteProcess):
             # evaluate to paths), or dictionaries of parameters (fields can be substitutions).
             i = 0
             for param in parameters:
-                option = '-p' if isinstance(param, Parameter) else '--param-file'
+                option = '-p' if isinstance(param, Parameter) else '--params-file'
                 cmd += [option, LocalSubstitution(
                     "ros_specific_arguments['params'][{}]".format(i),
                     description='parameter {}'.format(i))]
@@ -204,7 +210,7 @@ class Node(ExecuteProcess):
         self.__expanded_node_name = '<node_name_unspecified>'
         self.__expanded_node_namespace = ''
         self.__final_node_name = None  # type: Optional[Text]
-        self.__expanded_parameter_files = None  # type: Optional[List[Text]]
+        self.__expanded_parameter_arguments = None  # type: Optional[List[Text]]
         self.__expanded_remappings = None  # type: Optional[List[Tuple[Text, Text]]]
 
         self.__substitutions_performed = False
@@ -315,10 +321,13 @@ class Node(ExecuteProcess):
             yaml.dump(param_dict, h, default_flow_style=False)
             return param_file_path
 
-    def _get_parameter_rule(param: Parameter):
-        return f'{perfor param.name}'
+    def _get_parameter_rule(self, param: 'Parameter', context: LaunchContext):
+        name, value = param.evaluate(context)
+        return f'{name}:={yaml.dump(value)}'
 
     def _perform_substitutions(self, context: LaunchContext) -> None:
+        # Here to avoid cyclic import
+        from ..descriptions import Parameter
         try:
             if self.__substitutions_performed:
                 # This function may have already been called by a subclass' `execute`, for example.
@@ -362,7 +371,7 @@ class Node(ExecuteProcess):
         self.__final_node_name += '/' + self.__expanded_node_name
         # expand parameters too
         if self.__parameters is not None:
-            self.__expanded_parameter_files = []
+            self.__expanded_parameter_arguments = []
             evaluated_parameters = evaluate_parameters(context, self.__parameters)
             for params in evaluated_parameters:
                 check_is_file = False
@@ -373,16 +382,16 @@ class Node(ExecuteProcess):
                     param_argument = str(params)
                     check_is_file = True
                 elif isinstance(params, Parameter):
-
+                    param_argument = self._get_parameter_rule(params, context)
                 else:
                     raise RuntimeError('invalid normalized parameters {}'.format(repr(params)))
                 if check_is_file and not os.path.isfile(param_argument):
                     self.__logger.warning(
                         'Parameter file path is not a file: {}'.format(param_argument),
                     )
-                    # Don't skip adding the file to the parameter list since space has been
-                    # reserved for it in the ros_specific_arguments.
-                self.__expanded_parameter_files.append(param_argument)
+                # Don't skip adding the argument to the list since space has been
+                # reserved for it in the ros_specific_arguments.
+                self.__expanded_parameter_arguments.append(param_argument)
         # expand remappings too
         if self.__remappings is not None:
             self.__expanded_remappings = []
@@ -405,8 +414,8 @@ class Node(ExecuteProcess):
             ros_specific_arguments['name'] = '__node:={}'.format(self.__expanded_node_name)
         if self.__expanded_node_namespace != '':
             ros_specific_arguments['ns'] = '__ns:={}'.format(self.__expanded_node_namespace)
-        if self.__expanded_parameter_files is not None:
-            ros_specific_arguments['params'] = self.__expanded_parameter_files
+        if self.__expanded_parameter_arguments is not None:
+            ros_specific_arguments['params'] = self.__expanded_parameter_arguments
         if self.__expanded_remappings is not None:
             ros_specific_arguments['remaps'] = []
             for remapping_from, remapping_to in self.__expanded_remappings:

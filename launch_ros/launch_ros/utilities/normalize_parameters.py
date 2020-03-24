@@ -33,7 +33,6 @@ from launch.utilities import normalize_to_list_of_substitutions
 
 import yaml
 
-from ..descriptions.parameter import Parameter as ParameterDescription
 from ..parameters_type import ParameterFile  # noqa: F401
 from ..parameters_type import Parameters
 from ..parameters_type import ParametersDict
@@ -173,6 +172,9 @@ def normalize_parameters(parameters: SomeParameters) -> Parameters:
     The normalized parameters will have all paths converted to a list of :class:`Substitution`,
     and dictionaries normalized using :meth:`normalize_parameter_dict`.
     """
+    # Here to avoid cyclic import
+    from ..parameter import Parameter as ParameterDescription
+
     if isinstance(parameters, str) or not isinstance(parameters, Sequence):
         raise TypeError('Expecting list of parameters, got {}'.format(parameters))
 
@@ -180,8 +182,8 @@ def normalize_parameters(parameters: SomeParameters) -> Parameters:
     for param in parameters:
         if isinstance(param, Mapping):
             normalized_params.append(normalize_parameter_dict(param))
-        else if isinstance(param, ParameterDescription):
-            normalized_params.append(ParameterDescription)
+        elif isinstance(param, ParameterDescription):
+            normalized_params.append(param)
         else:
             # It's a path, normalize to a list of substitutions
             if isinstance(param, pathlib.Path):

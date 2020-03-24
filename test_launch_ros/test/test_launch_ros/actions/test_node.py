@@ -15,6 +15,7 @@
 """Tests for the Node Action."""
 
 import os
+from typing import List
 import pathlib
 import unittest
 
@@ -22,7 +23,10 @@ from launch import LaunchDescription
 from launch import LaunchService
 from launch.actions import Shutdown
 from launch.substitutions import EnvironmentVariable
+
 import launch_ros.actions.node
+from launch_ros.descriptions import Parameter
+
 import yaml
 
 
@@ -36,7 +40,7 @@ class TestNode(unittest.TestCase):
 
     def _assert_launch_no_errors(self, actions):
         ld = LaunchDescription(actions)
-        ls = LaunchService()
+        ls = LaunchService(debug=True)
         ls.include_launch_description(ld)
         assert 0 == ls.run()
 
@@ -134,10 +138,56 @@ class TestNode(unittest.TestCase):
         self._assert_launch_no_errors([node_action])
 
         # Check the expanded parameters.
-        expanded_parameter_files = node_action._Node__expanded_parameter_files
-        assert len(expanded_parameter_files) == 3
+        expanded_parameter_arguments = node_action._Node__expanded_parameter_arguments
+        assert len(expanded_parameter_arguments) == 3
         for i in range(3):
-            assert expanded_parameter_files[i] == str(parameters_file_path)
+            assert expanded_parameter_arguments[i] == str(parameters_file_path)
+
+    def test_launch_node_with_parameter_descriptions(self):
+        """Test launching a node with parameters specified in a dictionary."""
+        os.environ['PARAM1_VALUE'] = 'param1_value'
+        os.environ['PARAM2'] = 'param2'
+        node_action = self._create_node(
+            parameters=[
+                Parameter(
+                    name='param1',
+                    value=EnvironmentVariable(name='PARAM1_VALUE'),
+                    value_type=str,
+                ),
+                Parameter(
+                    name=EnvironmentVariable(name='PARAM2'),
+                    value=[[EnvironmentVariable(name='PARAM2')],'_value'],
+                    value_type=List[str],
+                ),
+                Parameter(
+                    name='param_group1.list_params',
+                    value=[1.2, 3.4],
+                ),
+                Parameter(
+                    name=['param_group1.param_group2.', EnvironmentVariable('PARAM2'), '_values'],
+                    value=['param2_value'],
+                ),
+                Parameter(
+                    name='param3',
+                    value='',
+                ),
+            ],
+        )
+        self._assert_launch_no_errors([node_action])
+
+        expanded_parameter_arguments = node_action._Node__expanded_parameter_arguments
+        assert len(expanded_parameter_arguments) == 5
+        parameters = []
+        for item in expanded_parameter_arguments:
+            name, value = item.split(':=')
+            parameters.append((name, yaml.load(value)))
+        assert parameters == [
+            ('param1', 'param1_value'),
+            ('param2', ['param2', '_value']),
+            ('param_group1.list_params', [1.2, 3.4]),
+            ('param_group1.param_group2.param2_values', ['param2_value']),
+            ('param3', ''),
+        ]
 
     def test_launch_node_with_parameter_dict(self):
         """Test launching a node with parameters specified in a dictionary."""
@@ -159,9 +209,9 @@ class TestNode(unittest.TestCase):
         self._assert_launch_no_errors([node_action])
 
         # Check the expanded parameters (will be written to a file).
-        expanded_parameter_files = node_action._Node__expanded_parameter_files
-        assert len(expanded_parameter_files) == 1
-        with open(expanded_parameter_files[0], 'r') as h:
+        expanded_parameter_arguments = node_action._Node__expanded_parameter_arguments
+        assert len(expanded_parameter_arguments) == 1
+        with open(expanded_parameter_arguments[0], 'r') as h:
             expanded_parameters_dict = yaml.load(h)
             assert expanded_parameters_dict == {
                 '/**': {
