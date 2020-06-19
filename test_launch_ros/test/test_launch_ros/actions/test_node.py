@@ -164,7 +164,6 @@ class TestNode(unittest.TestCase):
         assert len(expanded_parameter_files) == 1
         with open(expanded_parameter_files[0], 'r') as h:
             expanded_parameters_dict = yaml.load(h, Loader=yaml.FullLoader)
-            print(node_action.node_name)
             assert expanded_parameters_dict == {
                 '/my_ns/my_node': {
                     'ros__parameters': {
